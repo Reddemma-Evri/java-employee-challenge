@@ -1,2 +1,17 @@
-spring.application.name: employee-api
-server.port: 8111
+spring:
+  application:
+    name: employee-api
+
+server:
+  port: 8111
+
+api:
+  rate-limit:
+    error: "Rate limit exceeded. Please try again later."
+
+employee:
+  api:
+    protocol: http
+    host: localhost
+    port: 8112
+    base-url: /api/v1/employee
