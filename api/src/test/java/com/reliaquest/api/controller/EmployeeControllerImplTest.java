@@ -6,7 +6,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.reliaquest.api.model.Employee;
 import com.reliaquest.api.service.IEmployeeService;
-import com.reliaquest.api.validator.EmployeeValidator;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,17 +22,12 @@ class EmployeeControllerImplTest {
     @MockBean
     private IEmployeeService employeeService;
 
-    @MockBean
-    private EmployeeValidator employeeValidator;
-
     @Test
     void testGetEmployeeById_shouldReturnEmployee() throws Exception {
         UUID id = UUID.randomUUID();
         String idStr = id.toString();
         Employee employee = new Employee(id, "John Doe", 50000, 30, "Engineer", "john@example.com");
-
-        doNothing().when(employeeValidator).validateUUID(idStr);
-        when(employeeService.getEmployeeById(id)).thenReturn(employee);
+        when(employeeService.getEmployeeById(id.toString())).thenReturn(employee);
 
         mockMvc.perform(get("/" + idStr)) // <-- use actual URL
                 .andExpect(status().isOk())
