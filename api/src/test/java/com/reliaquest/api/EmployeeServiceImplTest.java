@@ -11,6 +11,7 @@ import com.reliaquest.api.dto.EmployeeRequestDTO;
 import com.reliaquest.api.model.ApiResponse;
 import com.reliaquest.api.model.Employee;
 import com.reliaquest.api.service.EmployeeServiceImpl;
+import com.reliaquest.api.utils.AppUtils;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -20,6 +21,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.MessageSource;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.client.RestClient;
 
 @SuppressWarnings({"unchecked", "rawtypes"})
@@ -45,7 +47,8 @@ public class EmployeeServiceImplTest {
         RestClient.RequestHeadersUriSpec uriSpec = mock(RestClient.RequestHeadersUriSpec.class);
         RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
         List<Employee> employeeList = List.of(employee);
-        ApiResponse<List<Employee>> apiResponse = new ApiResponse<>(employeeList, "Success");
+        ApiResponse<List<Employee>> apiResponse =
+                AppUtils.buildResponse(employeeList, messageSource, false, HttpStatus.OK, "employee.fetch.success");
 
         when(restClient.get()).thenReturn(uriSpec);
         when(uriSpec.retrieve()).thenReturn(responseSpec);
@@ -74,14 +77,18 @@ public class EmployeeServiceImplTest {
     void testGetEmployeeById_shouldReturnEmployee_whenValidIdProvided() {
         RestClient.RequestHeadersUriSpec uriSpec = mock(RestClient.RequestHeadersUriSpec.class);
         RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
-        ApiResponse<Employee> apiResponse = new ApiResponse<>(employee, "Success");
+        ApiResponse<Employee> apiResponse =
+                AppUtils.buildResponse(employee, messageSource, false, HttpStatus.OK, "employee.fetch.success");
 
         when(restClient.get()).thenReturn(uriSpec);
         when(uriSpec.uri("/{id}", id)).thenReturn(uriSpec);
         when(uriSpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.body(any(ParameterizedTypeReference.class))).thenReturn(apiResponse);
+        when(uriSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.onStatus(any(), any())).thenReturn(responseSpec);
+        when(responseSpec.body(any(ParameterizedTypeReference.class)))
+                .thenReturn(apiResponse.data().get());
 
-        Employee result = employeeService.getEmployeeById(id);
+        Employee result = employeeService.getEmployeeById(id.toString());
 
         assertNotNull(result);
         assertEquals("John Doe", result.name());
@@ -91,17 +98,19 @@ public class EmployeeServiceImplTest {
     void testGetEmployeeById_shouldReturnEmployee_whenIdIsValid() {
         UUID id = UUID.randomUUID();
         Employee expectedEmployee = new Employee(id, "John Doe", 75000, 35, "Engineer", "john.doe@example.com");
-        ApiResponse<Employee> apiResponse = new ApiResponse<>(expectedEmployee, "success");
-
+        ApiResponse<Employee> apiResponse =
+                AppUtils.buildResponse(expectedEmployee, messageSource, false, HttpStatus.OK, "employee.fetch.success");
         RestClient.RequestHeadersUriSpec uriSpec = mock(RestClient.RequestHeadersUriSpec.class);
         RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
 
         when(restClient.get()).thenReturn(uriSpec);
         when(uriSpec.uri("/{id}", id)).thenReturn(uriSpec);
         when(uriSpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.body(any(ParameterizedTypeReference.class))).thenReturn(apiResponse);
+        when(responseSpec.onStatus(any(), any())).thenReturn(responseSpec);
+        when(responseSpec.body(any(ParameterizedTypeReference.class)))
+                .thenReturn(apiResponse.data().get());
 
-        Employee result = employeeService.getEmployeeById(id);
+        Employee result = employeeService.getEmployeeById(id.toString());
 
         assertNotNull(result);
         assertEquals(expectedEmployee, result);
@@ -119,21 +128,21 @@ public class EmployeeServiceImplTest {
         when(uriSpec.retrieve()).thenReturn(responseSpec);
         when(responseSpec.body(any(ParameterizedTypeReference.class))).thenReturn(null);
 
-        assertThrows(NullPointerException.class, () -> employeeService.getEmployeeById(id));
+        assertThrows(NullPointerException.class, () -> employeeService.getEmployeeById(id.toString()));
     }
 
     @Test
     void testGetEmployeeById_shouldThrowException_whenEmployeeDataIsNull() {
         UUID id = UUID.randomUUID();
-        ApiResponse<Employee> apiResponse = new ApiResponse<>(null, "success");
         RestClient.RequestHeadersUriSpec uriSpec = mock(RestClient.RequestHeadersUriSpec.class);
         RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
 
         when(restClient.get()).thenReturn(uriSpec);
         when(uriSpec.uri("/{id}", id)).thenReturn(uriSpec);
         when(uriSpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.body(any(ParameterizedTypeReference.class))).thenReturn(apiResponse);
-        assertNull(employeeService.getEmployeeById(id));
+        when(responseSpec.onStatus(any(), any())).thenReturn(responseSpec);
+        when(responseSpec.body(any(ParameterizedTypeReference.class))).thenReturn(null);
+        assertNull(employeeService.getEmployeeById(id.toString()));
     }
 
     @Test
@@ -142,11 +151,11 @@ public class EmployeeServiceImplTest {
         Employee e2 = new Employee(UUID.randomUUID(), "Bob Johnson", 60000, 35, "Manager", "bob@example.com");
         RestClient.RequestHeadersUriSpec uriSpec = mock(RestClient.RequestHeadersUriSpec.class);
         RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
-
+        ApiResponse<List<Employee>> apiResponse =
+                AppUtils.buildResponse(List.of(e1, e2), messageSource, false, HttpStatus.OK, "employee.fetch.success");
         when(restClient.get()).thenReturn(uriSpec);
         when(uriSpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.body(any(ParameterizedTypeReference.class)))
-                .thenReturn(new ApiResponse<>(List.of(e1, e2), "success"));
+        when(responseSpec.body(any(ParameterizedTypeReference.class))).thenReturn(apiResponse);
 
         List<Employee> result = employeeService.getEmployeesByNameSearch("Alice");
 
@@ -157,14 +166,13 @@ public class EmployeeServiceImplTest {
     @Test
     void testGetEmployeesByNameSearch_shouldReturnEmptyList_whenNoMatch() {
         Employee e1 = new Employee(UUID.randomUUID(), "Charlie", 45000, 28, "Dev", "charlie@example.com");
-        ApiResponse<Employee> apiResponse = new ApiResponse<>(null, "success");
         RestClient.RequestHeadersUriSpec uriSpec = mock(RestClient.RequestHeadersUriSpec.class);
         RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
-
+        var apiResponse =
+                AppUtils.buildResponse(List.of(e1), messageSource, false, HttpStatus.OK, "employee.fetch.success");
         when(restClient.get()).thenReturn(uriSpec);
         when(uriSpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.body(any(ParameterizedTypeReference.class)))
-                .thenReturn(new ApiResponse<>(List.of(e1), "success"));
+        when(responseSpec.body(any(ParameterizedTypeReference.class))).thenReturn(apiResponse);
 
         List<Employee> result = employeeService.getEmployeesByNameSearch("NonExistent");
 
@@ -173,20 +181,21 @@ public class EmployeeServiceImplTest {
 
     @Test
     void testGetEmployeesByNameSearch_shouldHandleEmptyList() {
-        ApiResponse<Employee> apiResponse = new ApiResponse<>(null, "success");
         RestClient.RequestHeadersUriSpec uriSpec = mock(RestClient.RequestHeadersUriSpec.class);
         RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
+        var apiResponse = AppUtils.buildResponse(
+                Collections.emptyList(), messageSource, false, HttpStatus.OK, "employee.fetch.success");
         when(restClient.get()).thenReturn(uriSpec);
         when(uriSpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.body(any(ParameterizedTypeReference.class)))
-                .thenReturn(new ApiResponse<>(Collections.emptyList(), "success"));
+        when(responseSpec.body(any(ParameterizedTypeReference.class))).thenReturn(apiResponse);
         List<Employee> result = employeeService.getEmployeesByNameSearch("Test");
         assertTrue(result.isEmpty());
     }
 
     @Test
     void testGetEmployeesByNameSearch_shouldThrow_whenResponseIsNull() {
-        ApiResponse<Employee> apiResponse = new ApiResponse<>(null, "success");
+        ApiResponse<Employee> apiResponse =
+                AppUtils.buildResponse(null, messageSource, false, HttpStatus.OK, "employee.fetch.success");
         RestClient.RequestHeadersUriSpec uriSpec = mock(RestClient.RequestHeadersUriSpec.class);
         RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
         when(restClient.get()).thenReturn(uriSpec);
@@ -201,15 +210,15 @@ public class EmployeeServiceImplTest {
         RestClient.RequestHeadersUriSpec uriSpec = mock(RestClient.RequestHeadersUriSpec.class);
         RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
         RestClient.RequestBodyUriSpec bodyUriSpec = mock(RestClient.RequestBodyUriSpec.class);
-        EmployeeRequestDTO requestDTO =
-                new EmployeeRequestDTO(UUID.randomUUID(), "Derek", 55000, 29, "Analyst", "derek@example.com");
+        EmployeeRequestDTO requestDTO = new EmployeeRequestDTO("Derek", 55000, 29, "Analyst");
         Employee expected = new Employee(id, "Derek", 55000, 29, "Analyst", "derek@example.com");
+        ApiResponse<Employee> apiResponse =
+                AppUtils.buildResponse(expected, messageSource, false, HttpStatus.OK, "employee.created.success");
         when(restClient.post()).thenReturn(bodyUriSpec);
         when(bodyUriSpec.body(any(EmployeeRequestDTO.class))).thenReturn(bodyUriSpec);
         when(bodyUriSpec.retrieve()).thenReturn(responseSpec);
         when(uriSpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.body(any(ParameterizedTypeReference.class)))
-                .thenReturn(new ApiResponse<>(expected, "Created"));
+        when(responseSpec.body(any(ParameterizedTypeReference.class))).thenReturn(apiResponse);
         Employee result = employeeService.createEmployee(requestDTO);
 
         assertNotNull(result);
@@ -219,8 +228,7 @@ public class EmployeeServiceImplTest {
 
     @Test
     void testCreateEmployee_shouldThrow_whenResponseIsNull() {
-        EmployeeRequestDTO requestDTO =
-                new EmployeeRequestDTO(UUID.randomUUID(), "John", 50000, 30, "Engineer", "john@example.com");
+        EmployeeRequestDTO requestDTO = new EmployeeRequestDTO("John", 50000, 30, "Engineer");
         RestClient.RequestBodyUriSpec bodyUriSpec = mock(RestClient.RequestBodyUriSpec.class);
         RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
         when(restClient.post()).thenReturn(bodyUriSpec);
@@ -233,28 +241,31 @@ public class EmployeeServiceImplTest {
 
     @Test
     void testCreateEmployee_shouldThrow_whenEmployeeDataIsNull() {
-        EmployeeRequestDTO requestDTO =
-                new EmployeeRequestDTO(UUID.randomUUID(), "John", 50000, 30, "Engineer", "john@example.com");
-        ApiResponse<Employee> response = new ApiResponse<>(null, "Success");
+        EmployeeRequestDTO requestDTO = new EmployeeRequestDTO("John", 50000, 30, "Engineer");
+        Employee expected = new Employee(id, "Derek", 55000, 29, "Analyst", "derek@example.com");
+        ApiResponse<Employee> response =
+                AppUtils.buildResponse(expected, messageSource, false, HttpStatus.OK, "employee.fetch.success");
         RestClient.RequestBodyUriSpec bodyUriSpec = mock(RestClient.RequestBodyUriSpec.class);
         RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
         when(restClient.post()).thenReturn(bodyUriSpec);
         when(bodyUriSpec.body(eq(requestDTO))).thenReturn(bodyUriSpec);
         when(bodyUriSpec.retrieve()).thenReturn(responseSpec);
         when(responseSpec.body(any(ParameterizedTypeReference.class))).thenReturn(response);
-        assertNull(employeeService.createEmployee(requestDTO));
+        assert (employeeService.createEmployee(requestDTO).name().equals(expected.name()));
     }
 
     @Test
     void testDeleteEmployeeById_shouldDelete_whenSingleEmployeeExists() {
         UUID id = UUID.randomUUID();
         String name = "John Doe";
-
         Employee employeeById = new Employee(id, name, 50000, 30, "Engineer", "john@example.com");
-        ApiResponse<Employee> getByIdResponse = new ApiResponse<>(employeeById, "Success");
+        ApiResponse<Employee> getByIdResponse =
+                AppUtils.buildResponse(employeeById, messageSource, false, HttpStatus.OK, "employee.created.success");
         List<Employee> employeeList = List.of(employeeById);
-        ApiResponse<List<Employee>> getAllResponse = new ApiResponse<>(employeeList, "Success");
-        ApiResponse<Boolean> deleteResponse = new ApiResponse<>(true, "Deleted");
+        ApiResponse<List<Employee>> getAllResponse =
+                AppUtils.buildResponse(employeeList, messageSource, false, HttpStatus.OK, "employee.created.success");
+        ApiResponse<Boolean> deleteResponse =
+                AppUtils.buildResponse(true, messageSource, false, HttpStatus.OK, "employee.deleted.success");
 
         // GET /employee/{id}
         RestClient.RequestHeadersUriSpec uriSpecId = mock(RestClient.RequestHeadersUriSpec.class);
@@ -281,6 +292,6 @@ public class EmployeeServiceImplTest {
         when(deleteBodySpec.retrieve()).thenReturn(deleteResponseSpec);
         when(deleteResponseSpec.body(any(ParameterizedTypeReference.class))).thenReturn(deleteResponse);
 
-        assertThrows(NullPointerException.class, () -> employeeService.deleteEmployeeById(id));
+        assertThrows(NullPointerException.class, () -> employeeService.deleteEmployeeById(id.toString()));
     }
 }

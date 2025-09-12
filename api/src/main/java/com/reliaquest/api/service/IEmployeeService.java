@@ -1,17 +1,24 @@
 package com.reliaquest.api.service;
 
+import com.reliaquest.api.constant.ValidatorConstants;
 import com.reliaquest.api.dto.EmployeeRequestDTO;
 import com.reliaquest.api.model.Employee;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import java.util.List;
-import java.util.UUID;
+import org.springframework.validation.annotation.Validated;
 
+@Validated
 public interface IEmployeeService {
 
     List<Employee> getAllEmployees();
 
-    List<Employee> getEmployeesByNameSearch(String searchString);
+    List<Employee> getEmployeesByNameSearch(@Valid @NotBlank String searchString);
 
-    Employee getEmployeeById(UUID id);
+    Employee getEmployeeById(
+            @Valid @Pattern(regexp = ValidatorConstants.UUID_VALIDATOR, message = "{employee.id.invalidUUID}")
+                    String id);
 
     int getHighestSalary();
 
@@ -19,5 +26,7 @@ public interface IEmployeeService {
 
     Employee createEmployee(EmployeeRequestDTO input);
 
-    void deleteEmployeeById(UUID id);
+    String deleteEmployeeById(
+            @Valid @Pattern(regexp = ValidatorConstants.UUID_VALIDATOR, message = "{employee.id.invalidUUID}")
+                    String id);
 }

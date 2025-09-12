@@ -47,7 +47,7 @@ class EmployeeValidatorTest {
     @Test
     void testValidateEmployeeRequest_valid() {
         EmployeeRequestDTO dto =
-                new EmployeeRequestDTO(UUID.randomUUID(), "John", 50000, 25, "Engineer", "john@example.com");
+                new EmployeeRequestDTO("John", 50000, 25, "Engineer");
         assertDoesNotThrow(() -> validator.validateEmployeeRequest(dto));
     }
 }

@@ -22,11 +22,9 @@ public class EmployeeRestClientConfig {
         String baseUrl = String.format("%s://%s:%s%s", protocol, host, port, basePath);
         return RestClient.builder()
                 .baseUrl(baseUrl)
-                .defaultStatusHandler(
-                        status -> status == HttpStatus.TOO_MANY_REQUESTS, // ✅ Predicate<HttpStatusCode>
-                        (request, response) -> {
-                            throw new TooManyRequestsException(rateLimitErrorMsg);
-                        })
+                .defaultStatusHandler(status -> status == HttpStatus.TOO_MANY_REQUESTS, (request, response) -> {
+                    throw new TooManyRequestsException(rateLimitErrorMsg);
+                })
                 .build();
     }
 }

@@ -1,3 +1,5 @@
 package com.reliaquest.api.model;
 
-public record ApiResponse<T>(T data, String status) {}
+import java.util.Optional;
+
+public record ApiResponse<T>(Optional<T> data, boolean error, int statusCode, String status) {}
